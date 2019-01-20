@@ -6,13 +6,16 @@ query_state <- function(state) {
   state_stores <-data.frame()
   
   for (i in 1:3) {
-    result <- query_page(paste(query,state,sep=" "))
+    # result has Canada and Australia for some reason
+    result <- query_page(paste(query,state,'USA',sep=" "))
     if ( is.null(result$cnt)) {
       warning("error state")
+      error_result <<- c(error_result,state)
       return(0)
     }
     if ( result$cnt == 0 ) {
       message("no result found")
+      no_result <<- c(no_result,state)
       return(0)
     }
     # name exact match case insensitive
@@ -25,10 +28,12 @@ query_state <- function(state) {
   }
   cnt <- dim(state_stores)[1]
   if (cnt == 60) {
-    warning("max 60 result from google")
+    warning(state, " has reached max 60 result from google")
   }
   # add state name and assign to global 
   state_stores <- cbind(state=rep(state, cnt), state_stores)
+  # idealy filter out duplicate base on distance to other results or address
+  # but for homework, this is good enough
   stores <<- rbind(stores, state_stores)
   return(cnt)
 }
@@ -85,12 +90,22 @@ api_key <- readLines('google.key')
 query <- "Costco wholesale"
 stores <- data.frame()
 next_page_token <- NULL
+# state that has not Costco
+no_result <- c()
+# state that return error
+error_result <- c()
 
-query_state('VA')
-query_state('MD')
-query_state('CA')
+#query_state('VA')
+#query_state('MD')
+#query_state('CA')
 
+state_list <- c('AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI')
 
+no_result
+
+error_result
+
+lapply(state_list, query_state)
 
 # save result for map
 saveRDS(stores, 'costco.rds')
