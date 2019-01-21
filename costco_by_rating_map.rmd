@@ -12,6 +12,10 @@ requirement of this homework is producing html doc using R markdown, it should i
 
 This homework is done on Jan. 29, 2019.
 
+Git repo: https://github.com/yszhangit/lasthomework
+
+Published page(this page): https://yszhangit.github.io/lasthomework/
+
 #### Preface
 This HTML page show a map of Costco Wholesale stores across United States, you can hide show base on rating, and using zoom to cluster/uncluster markers.
 
