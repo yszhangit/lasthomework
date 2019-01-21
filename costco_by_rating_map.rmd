@@ -1,0 +1,79 @@
+---
+title: "Homework, Costco rating map"
+author: "yinshu zhang"
+date: "January 20, 2019"
+output: html_document
+---
+### Homework assignment
+Coursea.com "Developing Data Products" peer review assignment,
+https://www.coursera.org/learn/data-products/home/welcome
+
+requirement of this homework is producing html doc using R markdown, it should include a map created with leaflet package.
+
+#### Preface
+This HTML page show a map of all Costco Wholesale stores across United States, you can hide show base on rating, and using zoom to cluster/uncluster markers.
+
+Location data is queried from Google, with map API. 
+
+```{r setup, include=FALSE}
+library(knitr)
+library(leaflet)
+library(dplyr)
+```
+## get data from Google
+The Google API 
+```{r noeval=T}
+  # call google API base on pagnation
+  if (is.null(next_page_token)) {
+    message("first page")
+    res <- google_places(search_string = query_text, key = api_key)
+  }else{
+    message("next page")
+    # pause before search with same input, otherwise will get "invalid request" error
+    Sys.sleep(3)
+    res <- google_places(search_string = query_text, page_token = next_page_token, key = api_key)
+  } 
+```
+
+## load data
+```{r load and prepare data}
+costcos <- readRDS('costco.rds')
+# have to remove base on address afterall
+costcos <- costcos %>% distinct(address, .keep_all = T)
+
+#overview rating distribution
+table(costcos$rating)
+```
+
+## create map
+Inlcude grouping and clusting markers functions, code is from an example from leaflet tutorial
+ https://rstudio.github.io/leaflet/showhide.html
+
+```{r map}
+costcos <- costcos %>%
+  mutate(rating.level = cut(rating,c(1, 4.4, 4.5, 5),
+                                labels = c('>1 & <=4.4', '>4.4 & <=4.5', '>4.5 & <=5')))
+
+costcos.df <- split(costcos, costcos$rating.level)
+
+l <- leaflet() %>% addTiles()
+
+names(costcos.df) %>%
+  purrr::walk( function(df) {
+    l <<- l %>%
+      addMarkers(data=costcos.df[[df]],
+                 lng=~lng, lat=~lat,
+                 label=~as.character(rating),
+                 popup=~as.character(address),
+                 group = df,
+                 clusterOptions = markerClusterOptions(removeOutsideVisibleBounds = F),
+                 labelOptions = labelOptions(noHide = F,
+                                             direction = 'auto'))
+  })
+
+l %>%
+  addLayersControl(
+    overlayGroups = names(costcos.df),
+    options = layersControlOptions(collapsed = FALSE)
+  )
+```
