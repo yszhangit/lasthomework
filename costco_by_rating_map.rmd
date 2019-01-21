@@ -10,19 +10,30 @@ https://www.coursera.org/learn/data-products/home/welcome
 
 requirement of this homework is producing html doc using R markdown, it should include a map created with leaflet package.
 
+This homework is done on Jan. 29, 2019.
+
 #### Preface
-This HTML page show a map of all Costco Wholesale stores across United States, you can hide show base on rating, and using zoom to cluster/uncluster markers.
+This HTML page show a map of Costco Wholesale stores across United States, you can hide show base on rating, and using zoom to cluster/uncluster markers.
 
 Location data is queried from Google, with map API. 
+
+To reproduce without setup Google API and refresh from Google, location data is saved in git repo.
+
 
 ```{r setup, include=FALSE}
 library(knitr)
 library(leaflet)
 library(dplyr)
 ```
-## get data from Google
-The Google API 
-```{r noeval=T}
+### Google Costco in USA
+The script that query Google API is rather long, please see git repo if interest in detail, 
+
+* Using Google Map Place search API. Enable it from your API manager if you want to refresh data for yourself.
+* API limit max result to 60 per query, 20 per "page".
+* For above reason, send search text as "costco wholesale" + state name + "USA".
+* if there are more than 20 result in same query, next_page_token will return,  below is query .
+
+```{r eval=F}
   # call google API base on pagnation
   if (is.null(next_page_token)) {
     message("first page")
@@ -34,35 +45,45 @@ The Google API
     res <- google_places(search_string = query_text, page_token = next_page_token, key = api_key)
   } 
 ```
+* Google map API return many detail incling pictures, phone number etc, we are interested in location, rating, save data for repeasted use.
+* Query date is 1/19/2019
+* There are two states have more than 60 results.
 
-## load data
-```{r load and prepare data}
+### load data
+```{r load}
 costcos <- readRDS('costco.rds')
 # have to remove base on address afterall
 costcos <- costcos %>% distinct(address, .keep_all = T)
-
-#overview rating distribution
-table(costcos$rating)
 ```
 
-## create map
-Inlcude grouping and clusting markers functions, code is from an example from leaflet tutorial
+```{r rating_dist}
+table(costcos$rating)
+```
+The overview of rating distribution shows most store rating is either 4.5 or 4.6, we will cut the data frame into less than 4.5(4.4 or below), 4.5, more than 4.5(4.6 or above). 
+
+### create map
+Inlcude grouping and clusting markers functions, code is from an example of leaflet tutorial
  https://rstudio.github.io/leaflet/showhide.html
 
-```{r map}
+This code first divide "costcos" data frame into 3 levels base on value of "rating", 1 to 4.4 is "Ugly", 4.5 which is median value, we call it "Bad" just becasue of that movie, then, from more than 4.5 to 5 is "Good".
+
+Then call leaflet function, add markers, and layer control.
+
+```{r map,message =F, warning = F}
 costcos <- costcos %>%
   mutate(rating.level = cut(rating,c(1, 4.4, 4.5, 5),
-                                labels = c('>1 & <=4.4', '>4.4 & <=4.5', '>4.5 & <=5')))
-
+                                labels = c('Ugly', 'Bad', 'Good')))
+# cut data framee
 costcos.df <- split(costcos, costcos$rating.level)
 
-l <- leaflet() %>% addTiles()
+# add HTML option width to fill page to width
+l <- leaflet(width="100%") %>% addTiles()
 
+# layers by labels
 names(costcos.df) %>%
   purrr::walk( function(df) {
     l <<- l %>%
       addMarkers(data=costcos.df[[df]],
-                 lng=~lng, lat=~lat,
                  label=~as.character(rating),
                  popup=~as.character(address),
                  group = df,
@@ -71,9 +92,12 @@ names(costcos.df) %>%
                                              direction = 'auto'))
   })
 
+# add control
 l %>%
   addLayersControl(
     overlayGroups = names(costcos.df),
     options = layersControlOptions(collapsed = FALSE)
   )
 ```
+
+There you are, Costco Map with ratings...
